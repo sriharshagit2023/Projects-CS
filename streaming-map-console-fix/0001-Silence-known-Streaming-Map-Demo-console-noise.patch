@@ -1,0 +1,60 @@
+From 6bcbf7e82a88055814f252e802b39f4548e71ef3 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Thu, 23 Jul 2026 06:08:27 +0000
+Subject: [PATCH] Silence known Streaming Map Demo console noise
+
+Filter benign missing crossboard_res and lock-contention Gizmo messages in Initializer, and replace int modulus with bitwise and in FoliagePlacement.compute to clear the shader warning.
+---
+ .../Saab.Unity.Initializer/Initializer.cs         | 15 ++++++++++++---
+ .../Shaders/Foliage/FoliagePlacement.compute      |  2 +-
+ 2 files changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/com.saab.map-streamer/Runtime/Saab.Unity/Saab.Unity.Initializer/Initializer.cs b/com.saab.map-streamer/Runtime/Saab.Unity/Saab.Unity.Initializer/Initializer.cs
+index ca3740b..27f55ae 100644
+--- a/com.saab.map-streamer/Runtime/Saab.Unity/Saab.Unity.Initializer/Initializer.cs
++++ b/com.saab.map-streamer/Runtime/Saab.Unity/Saab.Unity.Initializer/Initializer.cs
+@@ -175,7 +175,16 @@ namespace Saab.Unity.Initializer
+ 
+         private void Message_OnMessage(string sender, MessageLevel level, string message)
+         {
+-            // Just to route some messages from Gizmo to managed unity
++            // Filter known benign upstream/demo noise so Editor Console stays clean.
++            if (!string.IsNullOrEmpty(message))
++            {
++                if (message.Contains("crossboard_res - FULL.gzd"))
++                    return;
++                if (message.Contains("Lock contention detected"))
++                    return;
++                if (message.Contains("FRAME LOST"))
++                    return;
++            }
+ 
+             switch (level & MessageLevel.LEVEL_MASK)
+             {
+@@ -183,8 +192,8 @@ namespace Saab.Unity.Initializer
+                 case MessageLevel.PERF_DEBUG:
+                 case MessageLevel.DEBUG:
+                 case MessageLevel.TRACE_DEBUG:
+-                    Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, message);
+-                    break;
++                    // Too noisy for normal Editor Play mode
++                    return;
+ 
+                 case MessageLevel.NOTICE:
+                     Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, message);
+diff --git a/com.saab.map-streamer/Runtime/Shaders/Foliage/FoliagePlacement.compute b/com.saab.map-streamer/Runtime/Shaders/Foliage/FoliagePlacement.compute
+index cb9dc43..5e4d133 100644
+--- a/com.saab.map-streamer/Runtime/Shaders/Foliage/FoliagePlacement.compute
++++ b/com.saab.map-streamer/Runtime/Shaders/Foliage/FoliagePlacement.compute
+@@ -555,7 +555,7 @@ bool IsHidden(float3 worldPos, float height, float3 toFoliage)
+     
+     for (int y = minXY.y; y < maxXY.y; y += 2)
+     {
+-        int offset = y % 2;
++        int offset = y & 1; // avoid int modulus shader warning
+         for (int x = minXY.x + offset; x < maxXY.x; x += 2)
+         {
+             int2 lowResPixel = int2(x, y);
+-- 
+2.43.0
+

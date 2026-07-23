@@ -1,0 +1,27 @@
+From 872b7823e2bbd0231f946589ba71fda5a9e6e1f8 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Thu, 23 Jul 2026 07:34:15 +0000
+Subject: [PATCH] Filter gzMutex unbalanced lock warning in Editor
+
+Suppress known native GizmoSDK mutex teardown warnings that appear during Play mode and do not affect the streaming map demo.
+---
+ .../Runtime/Saab.Unity/Saab.Unity.Initializer/Initializer.cs   | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/com.saab.map-streamer/Runtime/Saab.Unity/Saab.Unity.Initializer/Initializer.cs b/com.saab.map-streamer/Runtime/Saab.Unity/Saab.Unity.Initializer/Initializer.cs
+index 27f55ae..bc969a2 100644
+--- a/com.saab.map-streamer/Runtime/Saab.Unity/Saab.Unity.Initializer/Initializer.cs
++++ b/com.saab.map-streamer/Runtime/Saab.Unity/Saab.Unity.Initializer/Initializer.cs
+@@ -184,6 +184,9 @@ namespace Saab.Unity.Initializer
+                     return;
+                 if (message.Contains("FRAME LOST"))
+                     return;
++                // Native Gizmo teardown noise in Editor Play/Stop
++                if (message.Contains("gzMutex") && message.Contains("unbalanced"))
++                    return;
+             }
+ 
+             switch (level & MessageLevel.LEVEL_MASK)
+-- 
+2.43.0
+
